@@ -31,8 +31,21 @@ var calculatePrime = function(n){
   return prime;
 }
 
+
+var validate = function(req, res, next) {
+  if(req.query.n) {
+    number = parseInt(req.query.n, 10);
+    if(isNaN(number) || number < 1 || number > 10000){
+      res.render('index', {error: 'Please submit a valid number between 1 and 10000.'});
+      return;
+    }
+    req.query.n = number;
+  }
+  next();
+}
+
 // Set up the GET route
-app.get('/', function (req, res) {
+app.get('/', validate, function (req, res) {
   if(req.query.n) {
     // Calculate prime and render view
     var prime = calculatePrime(req.query.n);
