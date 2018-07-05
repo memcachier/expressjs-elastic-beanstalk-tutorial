@@ -1,6 +1,7 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
+var memjs = require('memjs')
 
 var app = express();
 
@@ -11,6 +12,11 @@ app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* ADD THE APP.JS CODE HERE! */
+var mc = memjs.Client.create(process.env.MEMCACHIER_SERVERS, {
+  failover: true,  // default: false
+  timeout: 1,      // default: 0.5 (seconds)
+  keepAlive: true  // default: false
+})
 
 // Super simple algorithm to find largest prime <= n
 var calculatePrime = function(n){
@@ -47,9 +53,22 @@ var validate = function(req, res, next) {
 // Set up the GET route
 app.get('/', validate, function (req, res) {
   if(req.query.n) {
-    // Calculate prime and render view
-    var prime = calculatePrime(req.query.n);
-    res.render('index', { n: req.query.n, prime: prime});
+    var prime;
+    var prime_key = 'prime.' + req.query.n;
+    // Look in cache
+    mc.get(prime_key, function(err, val) {
+      if(err == null && val != null) {
+        // Found it!
+        prime = parseInt(val)
+      }
+      else {
+        // Prime not in cache (calculate and store)
+        prime = calculatePrime(req.query.n)
+        mc.set(prime_key, '' + prime, {expires:0}, function(err, val){/* handle error */})
+      }
+      // Render view with prime
+      res.render('index', { n: req.query.n, prime: prime });
+    })
   }
   else {
     // Render view without prime
