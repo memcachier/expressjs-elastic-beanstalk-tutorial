@@ -88,7 +88,9 @@ app.get('/', validate, cacheView, function (req, res) {
         mc.set(prime_key, '' + prime, {expires:0}, function(err, val){/* handle error */})
       }
       // Render view with prime
-      res.render('index', { n: req.query.n, prime: prime });
+      res.render('index', {
+        n: req.query.n, prime: prime, likes: likes[req.query.n] || 0
+      });
     })
   }
   else {
