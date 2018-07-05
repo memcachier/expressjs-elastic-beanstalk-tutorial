@@ -1,7 +1,8 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
-var memjs = require('memjs')
+var memjs = require('memjs');
+var bodyParser = require('body-parser');
 
 var app = express();
 
@@ -10,6 +11,8 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 /* ADD THE APP.JS CODE HERE! */
 var mc = memjs.Client.create(process.env.MEMCACHIER_SERVERS, {
@@ -50,8 +53,26 @@ var validate = function(req, res, next) {
   next();
 }
 
+var cacheView = function(req, res, next) {
+  var view_key = '_view_cache_' + req.originalUrl || req.url;
+  mc.get(view_key, function(err, val) {
+    if(err == null && val != null) {
+      // Found the rendered view -> send it immediately
+      res.send(val.toString('utf8'));
+      return;
+    }
+    // Cache the rendered view for future requests
+    res.sendRes = res.send
+    res.send = function(body){
+      mc.set(view_key, body, {expires:0}, function(err, val){/* handle error */})
+      res.sendRes(body);
+    }
+    next();
+  });
+}
+
 // Set up the GET route
-app.get('/', validate, function (req, res) {
+app.get('/', validate, cacheView, function (req, res) {
   if(req.query.n) {
     var prime;
     var prime_key = 'prime.' + req.query.n;
@@ -76,6 +97,13 @@ app.get('/', validate, function (req, res) {
   }
 });
 
+// Like storage (in a serious app you should use a permanent storage like a database)
+var likes = {}
+
+app.post('/', function (req, res) {
+  likes[req.query.n] = (likes[req.query.n] || 0) + 1
+  res.redirect('/?n=' + req.query.n)
+});
 
 /* END DIY CODE*/
 
