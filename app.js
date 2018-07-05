@@ -103,6 +103,7 @@ app.get('/', validate, cacheView, function (req, res) {
 var likes = {}
 
 app.post('/', function (req, res) {
+  mc.delete('_view_cache_/?n=' + req.body.n, function(err, val){/* handle error */});
   likes[req.query.n] = (likes[req.query.n] || 0) + 1
   res.redirect('/?n=' + req.query.n)
 });
