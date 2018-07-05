@@ -3,6 +3,8 @@ var express = require('express');
 var path = require('path');
 var memjs = require('memjs');
 var bodyParser = require('body-parser');
+var session = require('express-session');
+var MemcachedStore = require('connect-memjs')(session);
 
 var app = express();
 
@@ -13,6 +15,17 @@ app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Session config
+app.use(session({
+  secret: 'ClydeIsASquirrel',
+  resave: 'false',
+  saveUninitialized: 'false',
+  store: new MemcachedStore({
+    servers: [process.env.MEMCACHIER_SERVERS],
+    prefix: '_session_'
+  })
+}));
 
 /* ADD THE APP.JS CODE HERE! */
 var mc = memjs.Client.create(process.env.MEMCACHIER_SERVERS, {
